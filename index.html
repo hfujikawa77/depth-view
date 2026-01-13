@@ -59,8 +59,8 @@
         <div id="controls">
             <label>Model</label>
             <select id="modelSelect">
-                <option value="cat">🐱 Cat</option>
-                <option value="cube">📦 Cube</option>
+                <option value="cat">Cat</option>
+                <option value="cube">Cube</option>
             </select>
             <label>Size: <span id="sizeValue" class="size-display">7.0</span></label>
             <input type="range" id="sizeSlider" min="1" max="15" step="0.5" value="7">
@@ -93,9 +93,9 @@
         const CONFIG = {
             modelPath: 'cute_cat.glb',
             modelScale: 7.0,
-            modelRotationY: -Math.PI / 2, // 正面を向かせる
-            modelPositionZ: -2, // 手前に配置
-            modelPositionY: -1, // 地面に設置（部屋の高さ9の半分）
+            modelRotationY: -Math.PI / 2, // 豁｣髱｢繧貞髄縺九○繧・            
+            modelPositionZ: -2, // 謇句燕縺ｫ驟咲ｽｮ
+            modelPositionY: -1, // 蝨ｰ髱｢縺ｫ險ｭ鄂ｮ・磯Κ螻九・鬮倥＆9縺ｮ蜊雁・・・            
             roomWidth: 16,
             roomHeight: 9,
             roomDepth: 12,
@@ -442,12 +442,20 @@
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
             });
 
-            faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
+            faceDetection.setOptions({
+                model: 'short',
+                minDetectionConfidence: 0.3,
+                selfieMode: true
+            });
             faceDetection.onResults(onFaceResults);
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 640, height: 480, facingMode: 'user' }
+                    video: {
+                        facingMode: { ideal: 'user' },
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
                 });
                 videoElement.srcObject = stream;
                 await videoElement.play();
@@ -476,7 +484,7 @@
                 targetEyePosition.x = -(box.xCenter - 0.5);
                 targetEyePosition.y = -(box.yCenter - 0.5);
 
-                document.getElementById('trackingStatus').textContent = 'Tracking ✓';
+                document.getElementById('trackingStatus').textContent = 'Tracking';
                 document.getElementById('trackingStatus').style.color = '#0f0';
             } else {
                 document.getElementById('trackingStatus').textContent = 'No face';
