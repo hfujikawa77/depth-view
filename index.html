@@ -88,12 +88,17 @@
                 <div id="lookAtFaceToggle" class="toggle-switch"></div>
                 <span class="toggle-label">Look at Face</span>
             </div>
+            <div class="toggle-container">
+                <div id="lookAtFingerToggle" class="toggle-switch"></div>
+                <span class="toggle-label">Look at Finger</span>
+            </div>
         </div>
     </div>
 
     <!-- MediaPipe first -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
     <!-- Three.js ES Module -->
     <script type="importmap">
     {
@@ -131,11 +136,14 @@
         // Globals
         // =====================
         let scene, camera, renderer, model;
-        let faceDetection, videoElement;
+        let faceDetection, handDetection, videoElement;
         let eyePosition = { x: 0, y: 0 };
         let targetEyePosition = { x: 0, y: 0 };
+        let fingerPosition = { x: 0, y: 0 };
+        let targetFingerPosition = { x: 0, y: 0 };
         let screenWidth, screenHeight, aspectRatio;
         let lookAtFaceEnabled = false;
+        let lookAtFingerEnabled = false;
 
         // =====================
         // Initialize
@@ -165,17 +173,32 @@
             });
 
             // Look at face toggle
-            const lookAtToggle = document.getElementById('lookAtFaceToggle');
-            lookAtToggle.addEventListener('click', () => {
+            const lookAtFaceToggle = document.getElementById('lookAtFaceToggle');
+            const lookAtFingerToggle = document.getElementById('lookAtFingerToggle');
+
+            lookAtFaceToggle.addEventListener('click', () => {
                 lookAtFaceEnabled = !lookAtFaceEnabled;
-                lookAtToggle.classList.toggle('active', lookAtFaceEnabled);
+                lookAtFaceToggle.classList.toggle('active', lookAtFaceEnabled);
+                if (lookAtFaceEnabled) {
+                    lookAtFingerEnabled = false;
+                    lookAtFingerToggle.classList.remove('active');
+                }
+            });
+
+            lookAtFingerToggle.addEventListener('click', () => {
+                lookAtFingerEnabled = !lookAtFingerEnabled;
+                lookAtFingerToggle.classList.toggle('active', lookAtFingerEnabled);
+                if (lookAtFingerEnabled) {
+                    lookAtFaceEnabled = false;
+                    lookAtFaceToggle.classList.remove('active');
+                }
             });
         }
 
         function waitForMediaPipe() {
             return new Promise((resolve) => {
                 const check = () => {
-                    if (typeof FaceDetection !== 'undefined') {
+                    if (typeof FaceDetection !== 'undefined' && typeof Hands !== 'undefined') {
                         resolve();
                     } else {
                         setTimeout(check, 100);
@@ -481,6 +504,18 @@
             });
             faceDetection.onResults(onFaceResults);
 
+            // Hand detection
+            handDetection = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+            handDetection.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 0,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            handDetection.onResults(onHandResults);
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
@@ -506,6 +541,7 @@
         async function detectLoop() {
             if (videoElement.readyState >= 2) {
                 await faceDetection.send({ image: videoElement });
+                await handDetection.send({ image: videoElement });
             }
             requestAnimationFrame(detectLoop);
         }
@@ -526,6 +562,18 @@
             }
         }
 
+        function onHandResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                // Index finger tip is landmark 8
+                const indexTip = results.multiHandLandmarks[0][8];
+                targetFingerPosition.x = -(indexTip.x - 0.5);
+                targetFingerPosition.y = -(indexTip.y - 0.5);
+            } else {
+                targetFingerPosition.x *= 0.95;
+                targetFingerPosition.y *= 0.95;
+            }
+        }
+
         // =====================
         // Animation
         // =====================
@@ -534,6 +582,8 @@
 
             eyePosition.x += (targetEyePosition.x - eyePosition.x) * CONFIG.smoothing;
             eyePosition.y += (targetEyePosition.y - eyePosition.y) * CONFIG.smoothing;
+            fingerPosition.x += (targetFingerPosition.x - fingerPosition.x) * CONFIG.smoothing;
+            fingerPosition.y += (targetFingerPosition.y - fingerPosition.y) * CONFIG.smoothing;
 
             document.getElementById('faceX').textContent = eyePosition.x.toFixed(3);
             document.getElementById('faceY').textContent = eyePosition.y.toFixed(3);
@@ -546,7 +596,12 @@
                 const targetRotX = -eyePosition.y * 0.5;
                 model.rotation.y += (targetRotY - model.rotation.y) * 0.1;
                 model.rotation.x += (targetRotX - model.rotation.x) * 0.1;
-            } else if (model && !lookAtFaceEnabled) {
+            } else if (model && lookAtFingerEnabled) {
+                const targetRotY = CONFIG.modelRotationY + fingerPosition.x * 1.5;
+                const targetRotX = -fingerPosition.y * 0.8;
+                model.rotation.y += (targetRotY - model.rotation.y) * 0.1;
+                model.rotation.x += (targetRotX - model.rotation.x) * 0.1;
+            } else if (model) {
                 model.rotation.y += (CONFIG.modelRotationY - model.rotation.y) * 0.1;
                 model.rotation.x += (0 - model.rotation.x) * 0.1;
             }
