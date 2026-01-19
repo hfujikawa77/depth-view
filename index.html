@@ -564,14 +564,31 @@
         }
 
         let detectCount = 0;
+        let faceDetectionWorking = true;
         async function detectLoop() {
             if (videoElement.readyState >= 2) {
-                try {
-                    await faceDetection.send({ image: videoElement });
-                    if (detectCount < 3) debugLog('Face send OK');
-                } catch (e) {
-                    if (detectCount < 3) debugLog('Face send err: ' + e.message);
+                // Face detection with timeout
+                if (faceDetectionWorking) {
+                    if (detectCount < 3) debugLog('Face send start...');
+                    const faceTimeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('timeout')), 3000)
+                    );
+                    try {
+                        await Promise.race([
+                            faceDetection.send({ image: videoElement }),
+                            faceTimeout
+                        ]);
+                        if (detectCount < 3) debugLog('Face send OK');
+                    } catch (e) {
+                        if (detectCount < 5) debugLog('Face err: ' + e.message);
+                        if (e.message === 'timeout') {
+                            debugLog('Face detection disabled (timeout)');
+                            faceDetectionWorking = false;
+                        }
+                    }
                 }
+
+                // Hand detection
                 try {
                     await handDetection.send({ image: videoElement });
                     if (detectCount < 3) debugLog('Hand send OK');
