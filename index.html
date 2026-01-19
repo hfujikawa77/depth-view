@@ -602,7 +602,13 @@
 
         let faceResultCount = 0;
         let lastFaceTime = 0;
+        let faceCallCount = 0;
         function onFaceResults(results) {
+            faceCallCount++;
+            // Show call count every 30 calls
+            if (faceCallCount % 30 === 0) {
+                debugLog('onFaceResults called ' + faceCallCount + ' times, det=' + (results.detections ? results.detections.length : 0));
+            }
             const now = Date.now();
             if (results.detections && results.detections.length > 0) {
                 const box = results.detections[0].boundingBox;
