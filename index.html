@@ -602,32 +602,30 @@
 
         let faceResultCount = 0;
         function onFaceResults(results) {
-            if (faceResultCount < 5) {
-                debugLog('onFaceResults: ' + (results.detections ? results.detections.length : 'null') + ' detections');
-                if (results.detections && results.detections[0]) {
-                    const det = results.detections[0];
-                    debugLog('det keys: ' + Object.keys(det).join(','));
-                    if (det.boundingBox) {
-                        const b = det.boundingBox;
-                        debugLog('box: xC=' + b.xCenter + ' yC=' + b.yCenter + ' w=' + b.width + ' h=' + b.height);
-                    }
-                }
-                faceResultCount++;
-            }
             if (results.detections && results.detections.length > 0) {
                 const box = results.detections[0].boundingBox;
                 let xCenter = box.xCenter;
                 let yCenter = box.yCenter;
+                const vw = videoElement.videoWidth || 640;
+                const vh = videoElement.videoHeight || 480;
 
-                // If values are outside 0-1 range, they might be pixel coordinates or need normalization
-                // Check if values seem to be in pixel coordinates (> 1 or < 0 significantly)
+                // Android returns pixel coordinates, need to normalize
+                // Also handle negative values by using absolute positioning
                 if (Math.abs(xCenter) > 1 || Math.abs(yCenter) > 1) {
-                    // Values seem unnormalized - try to normalize using video dimensions
-                    const vw = videoElement.videoWidth || 640;
-                    const vh = videoElement.videoHeight || 480;
-                    xCenter = xCenter / vw;
-                    yCenter = yCenter / vh;
-                    if (faceResultCount < 10) debugLog('Normalized: x=' + xCenter.toFixed(3) + ' y=' + yCenter.toFixed(3));
+                    // xCenter seems to be offset from some origin, use width to calculate center
+                    // box format: xCenter is left edge + width/2 in some coordinate system
+                    // Try: normalize assuming xCenter is relative to image width
+                    xCenter = (xCenter + box.width / 2) / vw;
+                    yCenter = (Math.abs(yCenter) + box.height / 2) / vh;
+                }
+
+                // Clamp to valid range
+                xCenter = Math.max(0, Math.min(1, xCenter));
+                yCenter = Math.max(0, Math.min(1, yCenter));
+
+                if (faceResultCount < 10) {
+                    debugLog('Final: x=' + xCenter.toFixed(3) + ' y=' + yCenter.toFixed(3));
+                    faceResultCount++;
                 }
 
                 targetEyePosition.x = (xCenter - 0.5);
