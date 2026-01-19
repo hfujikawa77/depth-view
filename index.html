@@ -604,12 +604,23 @@
         function onFaceResults(results) {
             if (faceResultCount < 5) {
                 debugLog('onFaceResults: ' + (results.detections ? results.detections.length : 'null') + ' detections');
+                if (results.detections && results.detections[0]) {
+                    const det = results.detections[0];
+                    debugLog('det keys: ' + Object.keys(det).join(','));
+                    if (det.boundingBox) {
+                        debugLog('box keys: ' + Object.keys(det.boundingBox).join(','));
+                        debugLog('xCenter=' + det.boundingBox.xCenter + ' yCenter=' + det.boundingBox.yCenter);
+                    }
+                }
                 faceResultCount++;
             }
             if (results.detections && results.detections.length > 0) {
                 const box = results.detections[0].boundingBox;
-                targetEyePosition.x = (box.xCenter - 0.5);
-                targetEyePosition.y = -(box.yCenter - 0.5);
+                // Try different property names
+                const xCenter = box.xCenter ?? box.x ?? (box.originX + box.width / 2);
+                const yCenter = box.yCenter ?? box.y ?? (box.originY + box.height / 2);
+                targetEyePosition.x = (xCenter - 0.5);
+                targetEyePosition.y = -(yCenter - 0.5);
 
                 document.getElementById('trackingStatus').textContent = 'Tracking';
                 document.getElementById('trackingStatus').style.color = '#0f0';
