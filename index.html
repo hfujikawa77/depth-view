@@ -75,6 +75,7 @@
             <div>Status: <span id="trackingStatus">Starting...</span></div>
             <div>Eye X: <span id="faceX">0</span></div>
             <div>Eye Y: <span id="faceY">0</span></div>
+            <div id="debugLog" style="max-height:100px;overflow-y:auto;font-size:9px;color:#f88;"></div>
         </div>
         <div id="controls">
             <label>Model</label>
@@ -144,6 +145,16 @@
         let screenWidth, screenHeight, aspectRatio;
         let lookAtFaceEnabled = false;
         let lookAtFingerEnabled = false;
+
+        // Debug helper
+        function debugLog(msg) {
+            const el = document.getElementById('debugLog');
+            if (el) {
+                el.innerHTML = msg + '<br>' + el.innerHTML;
+                if (el.children.length > 20) el.innerHTML = el.innerHTML.substring(0, 500);
+            }
+            console.log(msg);
+        }
 
         // =====================
         // Initialize
@@ -491,32 +502,45 @@
         // MediaPipe
         // =====================
         async function initMediaPipe() {
+            debugLog('initMediaPipe start');
             videoElement = document.getElementById('video');
 
-            faceDetection = new FaceDetection({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
-            });
+            try {
+                faceDetection = new FaceDetection({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+                });
+                debugLog('FaceDetection created');
 
-            faceDetection.setOptions({
-                model: 'short',
-                minDetectionConfidence: 0.3,
-                selfieMode: true
-            });
-            faceDetection.onResults(onFaceResults);
-
-            // Hand detection
-            handDetection = new Hands({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-            });
-            handDetection.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 0,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            handDetection.onResults(onHandResults);
+                faceDetection.setOptions({
+                    model: 'short',
+                    minDetectionConfidence: 0.3,
+                    selfieMode: true
+                });
+                faceDetection.onResults(onFaceResults);
+                debugLog('FaceDetection configured');
+            } catch (e) {
+                debugLog('FaceDetection error: ' + e.message);
+            }
 
             try {
+                // Hand detection
+                handDetection = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                handDetection.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 0,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                handDetection.onResults(onHandResults);
+                debugLog('Hands configured');
+            } catch (e) {
+                debugLog('Hands error: ' + e.message);
+            }
+
+            try {
+                debugLog('Getting camera...');
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: { ideal: 'user' },
@@ -524,24 +548,37 @@
                         height: { ideal: 480 }
                     }
                 });
+                debugLog('Camera stream obtained');
                 videoElement.srcObject = stream;
                 await videoElement.play();
+                debugLog('Video playing');
 
                 document.getElementById('trackingStatus').textContent = 'Ready';
                 document.getElementById('trackingStatus').style.color = '#0f0';
-                console.log('Camera ready');
 
                 detectLoop();
             } catch (err) {
-                console.error('Camera error:', err);
+                debugLog('Camera error: ' + err.message);
                 document.getElementById('trackingStatus').textContent = 'Camera Error';
             }
         }
 
+        let detectCount = 0;
         async function detectLoop() {
             if (videoElement.readyState >= 2) {
-                await faceDetection.send({ image: videoElement });
-                await handDetection.send({ image: videoElement });
+                try {
+                    await faceDetection.send({ image: videoElement });
+                    if (detectCount < 3) debugLog('Face send OK');
+                } catch (e) {
+                    if (detectCount < 3) debugLog('Face send err: ' + e.message);
+                }
+                try {
+                    await handDetection.send({ image: videoElement });
+                    if (detectCount < 3) debugLog('Hand send OK');
+                } catch (e) {
+                    if (detectCount < 3) debugLog('Hand send err: ' + e.message);
+                }
+                detectCount++;
             }
             requestAnimationFrame(detectLoop);
         }
