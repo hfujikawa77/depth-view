@@ -600,7 +600,12 @@
             requestAnimationFrame(detectLoop);
         }
 
+        let faceResultCount = 0;
         function onFaceResults(results) {
+            if (faceResultCount < 5) {
+                debugLog('onFaceResults: ' + (results.detections ? results.detections.length : 'null') + ' detections');
+                faceResultCount++;
+            }
             if (results.detections && results.detections.length > 0) {
                 const box = results.detections[0].boundingBox;
                 targetEyePosition.x = (box.xCenter - 0.5);
