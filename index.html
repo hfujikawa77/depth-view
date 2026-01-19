@@ -601,7 +601,9 @@
         }
 
         let faceResultCount = 0;
+        let lastFaceTime = 0;
         function onFaceResults(results) {
+            const now = Date.now();
             if (results.detections && results.detections.length > 0) {
                 const box = results.detections[0].boundingBox;
                 let xCenter = box.xCenter;
@@ -610,11 +612,7 @@
                 const vh = videoElement.videoHeight || 480;
 
                 // Android returns pixel coordinates, need to normalize
-                // Also handle negative values by using absolute positioning
                 if (Math.abs(xCenter) > 1 || Math.abs(yCenter) > 1) {
-                    // xCenter seems to be offset from some origin, use width to calculate center
-                    // box format: xCenter is left edge + width/2 in some coordinate system
-                    // Try: normalize assuming xCenter is relative to image width
                     xCenter = (xCenter + box.width / 2) / vw;
                     yCenter = (Math.abs(yCenter) + box.height / 2) / vh;
                 }
@@ -624,20 +622,24 @@
                 yCenter = Math.max(0, Math.min(1, yCenter));
 
                 if (faceResultCount < 10) {
-                    debugLog('Final: x=' + xCenter.toFixed(3) + ' y=' + yCenter.toFixed(3));
+                    debugLog('TRACK: x=' + xCenter.toFixed(3) + ' y=' + yCenter.toFixed(3));
                     faceResultCount++;
                 }
 
                 targetEyePosition.x = (xCenter - 0.5);
                 targetEyePosition.y = -(yCenter - 0.5);
+                lastFaceTime = now;
 
                 document.getElementById('trackingStatus').textContent = 'Tracking';
                 document.getElementById('trackingStatus').style.color = '#0f0';
             } else {
-                document.getElementById('trackingStatus').textContent = 'No face';
-                document.getElementById('trackingStatus').style.color = '#ff0';
-                targetEyePosition.x *= 0.95;
-                targetEyePosition.y *= 0.95;
+                // Only show "No face" if no detection for 500ms
+                if (now - lastFaceTime > 500) {
+                    document.getElementById('trackingStatus').textContent = 'No face';
+                    document.getElementById('trackingStatus').style.color = '#ff0';
+                }
+                targetEyePosition.x *= 0.98;
+                targetEyePosition.y *= 0.98;
             }
         }
 
