@@ -550,8 +550,12 @@
                 });
                 debugLog('Camera stream obtained');
                 videoElement.srcObject = stream;
-                await videoElement.play();
-                debugLog('Video playing');
+                try {
+                    await videoElement.play();
+                    debugLog('Video playing');
+                } catch (playErr) {
+                    debugLog('Video play error: ' + playErr.message);
+                }
 
                 document.getElementById('trackingStatus').textContent = 'Ready';
                 document.getElementById('trackingStatus').style.color = '#0f0';
@@ -681,13 +685,13 @@
             if (model && lookAtFaceEnabled) {
                 const targetRotY = CONFIG.modelRotationY + eyePosition.x * 0.9;
                 const targetRotX = -eyePosition.y * 0.5;
-                model.rotation.y += (targetRotY - model.rotation.y) * 0.1;
-                model.rotation.x += (targetRotX - model.rotation.x) * 0.1;
+                model.rotation.y += (targetRotY - model.rotation.y) * 0.4;
+                model.rotation.x += (targetRotX - model.rotation.x) * 0.4;
             } else if (model && lookAtFingerEnabled) {
                 const targetRotY = CONFIG.modelRotationY + fingerPosition.x * 1.5;
                 const targetRotX = -fingerPosition.y * 0.8;
-                model.rotation.y += (targetRotY - model.rotation.y) * 0.1;
-                model.rotation.x += (targetRotX - model.rotation.x) * 0.1;
+                model.rotation.y += (targetRotY - model.rotation.y) * 0.6;
+                model.rotation.x += (targetRotX - model.rotation.x) * 0.6;
             } else if (model) {
                 model.rotation.y += (CONFIG.modelRotationY - model.rotation.y) * 0.1;
                 model.rotation.x += (0 - model.rotation.x) * 0.1;
